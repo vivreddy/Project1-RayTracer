@@ -42,7 +42,9 @@
     <ClCompile Include="..\..\src\utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="..\..\src\raytraceKernel.cu" />
+    <CudaCompile Include="..\..\src\raytraceKernel.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{FF21CA49-522E-4E86-B508-EE515B248FC4}</ProjectGuid>

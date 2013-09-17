@@ -90,7 +90,23 @@ __host__ __device__ glm::vec3 calculateRandomDirectionInHemisphere(glm::vec3 nor
 //Now that you know how cosine weighted direction generation works, try implementing non-cosine (uniform) weighted random direction generation.
 //This should be much easier than if you had to implement calculateRandomDirectionInHemisphere.
 __host__ __device__ glm::vec3 getRandomDirectionInSphere(float xi1, float xi2) {
-  return glm::vec3(0,0,0);
+
+	/*vertices[i] =  rad * sin(p*val) * sin(t*val); 
+	vertices[i+1] =  rad * sin(p*val); 
+	vertices[i+2] =  rad * sin(p*val) * cos(t*val); 
+	vertices[i+3] =  1.0f;*/
+
+//float t = TWO_PI * xi1;
+//float p = asin(sqrt(xi2));
+//
+//glm::vec3 a(0,0,0);
+//a.x = cos(t) * sin(p);
+//a.y = sin(t) * sin(p);
+//a.z = cos(p);
+//  
+//return glm::normalize(a);
+
+return glm::vec3(0,0,0);
 }
 
 //TODO (PARTIALLY OPTIONAL): IMPLEMENT THIS FUNCTION

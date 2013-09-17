@@ -71,8 +71,106 @@ __host__ __device__ glm::vec3 getSignOfRay(ray r){
 //TODO: IMPLEMENT THIS FUNCTION
 //Cube intersection test, return -1 if no intersection, otherwise, distance to intersection
 __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& intersectionPoint, glm::vec3& normal){
+	 glm::vec3 ro = multiplyMV(box.inverseTransform, glm::vec4(r.origin,1.0f));
+	 glm::vec3 rd = glm::normalize(multiplyMV(box.inverseTransform, glm::vec4(r.direction,0.0f)));
 
-    return -1;
+	 ray rt; rt.origin = ro; rt.direction = rd;
+  
+	 float vDotDirection = glm::dot(rt.origin, rt.direction);
+	 glm::vec4 NL(0,0,0,0);
+	float t1,t2;
+	float inf= 10000.0;   // Setting infinity as a high value
+	const float prt = 0.5; 
+	const float nrt = -0.5;  
+	 glm::vec4 ol(nrt,nrt,nrt,1.0);
+	 glm::vec4 oh(prt ,prt ,prt ,1.0);
+	 glm::vec4 tl =  ol;
+	 glm::vec4 th =  oh;
+	
+	double temp,thit;
+	float tn = -inf;
+	float tf =  inf;
+	
+	float rdd[3] = {rd.x,rd.y,rd.z};
+	float roo[3] = {ro.x,ro.y,ro.z};
+	// Computing t using the slab method
+	for(int i=0;i<3;i++)
+	{
+		if(rdd[i] == 0)
+		{
+		  if(roo[i] < tl[i] || roo[i] > th[i])
+			  return -1;
+		
+		}
+		else
+		{
+	t1 = (tl[i]-roo[i])/rdd[i];
+	t2 = (th[i]-roo[i])/rdd[i];
+
+	if(t1>t2)
+	{
+	   temp = t2;
+	   t2 = t1;
+	   t1 = temp;
+	// swapping
+	}
+	if(t1 > tn)
+		tn = t1;
+	if(t2 < tf)
+		tf = t2;
+
+	if(tn > tf)
+		return -1;
+	if(tf <= 0)
+		return -1;
+
+	thit = tn;
+	
+	
+	
+		}
+	}
+
+	
+	float e = 0.001;
+	if(thit >= -e && thit <= e)
+		return -1;
+
+
+	glm::vec3 R =  getPointOnRay(rt, thit) ; 
+	
+		
+	if(R.x > 0.5-e && R.x < 0.5+e)
+		NL = glm::vec4(1.0,0.0,0.0,0.0);//NL = glm::vec4(1.0,0.0,0.0,0.0);
+	else if(R.x > -0.5-e && R.x < -0.5+e)
+		NL = glm::vec4(-1.0,0.0,0.0,0.0);//NL = glm::vec4(-1.0,0.0,0.0,0.0);
+	else if(R.y > 0.5-e && R.y < 0.5+e)
+		NL = glm::vec4(0.0,1.0,0.0,0.0);//NL = glm::vec4(0.0,1.0,0.0,0.0);
+	else if(R.y > -0.5-e && R.y < -0.5+e)
+		NL = glm::vec4(0.0,-1.0,0.0,0.0);//NL = glm::vec4(0.0,-1.0,0.0,0.0);
+	else if(R.z > 0.5-e && R.z < 0.5+e)
+		NL = glm::vec4(0.0,0.0,1.0,0.0);//NL = glm::vec4(0.0,0.0,1.0,0.0);
+	else if(R.z > -0.5-e && R.z < -0.5+e)
+		NL = glm::vec4(0.0,0.0,-1.0,0.0);//NL = glm::vec4(0.0,0.0,-1.0,0.0);
+	//else
+	//	NL = glm::vec4(0.0,0.0,1.0,0.0);
+	   // P +(float) thit * V ;
+	
+
+	//NL = glm::vec4(0.0,0.0,1.0,0.0);//
+
+     glm::vec3 realIntersectionPoint = multiplyMV(box.transform, glm::vec4(getPointOnRay(rt, thit), 1.0));
+     glm::vec3 realOrigin = multiplyMV(box.transform, glm::vec4(0,0,0,1));
+	 intersectionPoint = realIntersectionPoint;
+
+	 normal =  glm::normalize(multiplyMV(box.transform, NL));
+	 
+     //normal = glm::normalize(realIntersectionPoint - realOrigin);
+        
+     return glm::length(r.origin - realIntersectionPoint);
+
+	
+	//return -1;
 }
 
 //LOOK: Here's an intersection test example from a sphere. Now you just need to figure out cube and, optionally, triangle.
@@ -177,7 +275,28 @@ __host__ __device__ glm::vec3 getRandomPointOnCube(staticGeom cube, float random
 //Generates a random point on a given sphere
 __host__ __device__ glm::vec3 getRandomPointOnSphere(staticGeom sphere, float randomSeed){
 
-  return glm::vec3(0,0,0);
+	/*vertices[i] =  rad * sin(p*val) * sin(t*val); 
+	vertices[i+1] =  rad * sin(p*val); 
+	vertices[i+2] =  rad * sin(p*val) * cos(t*val); 
+	vertices[i+3] =  1.0f;*/
+
+	// The above is the equations for a point on sphere , where p and t are degree. 
+	// p is vertical angle and varies from 0 to 180
+	// t is horizontal angle and varies from 0 to 360 
+
+	thrust::default_random_engine rng(hash(randomSeed));
+    thrust::uniform_real_distribution<float> u01(0,180);
+    thrust::uniform_real_distribution<float> u02(0,360);
+
+	glm::vec3 point = glm::vec3(.5,.5,.5);
+	float val = 3.14285/180;
+	float rad = 0.5f;
+	point = glm::vec3( rad * sin((float)u01(rng)*val) * sin((float)u02(rng)*val)   , rad * sin((float)u01(rng)*val)  ,rad * sin((float)u01(rng)*val) * cos((float)u02(rng)*val));
+	//point = glm::vec3((float)u01(rng), .5, (float)u02(rng));
+
+	 glm::vec3 randPoint = multiplyMV(sphere.transform, glm::vec4(point,1.0f));
+
+	return randPoint;
 }
 
 #endif
