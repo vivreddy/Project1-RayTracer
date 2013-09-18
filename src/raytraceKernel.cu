@@ -197,7 +197,7 @@ else
 	 // Shadows
 	   int shadow = 0 ;
 	   float sit = 0; ;
-	   glm::vec3 neyep = ips[obno] + ref1 * 0.01f ;
+	   glm::vec3 neyep = ips[obno] + ref1 * 0.001f ;
 	   ray s;
 	   s.origin = neyep;
 	   s.direction = glm::normalize(LPOS-ips[obno]);
@@ -230,15 +230,66 @@ else
 		}	 
 		}
 
+	// Reflections ////////////////////////////////////////////////////////////////////
 
+		ray ref;
+		ref.origin = neyep;
+		ref.direction = ref1 ;
+		int rbno = 0;
+		float rrps[20];
+		  for(int i=0; i < numberOfGeoms ; i++)
+  {
+		
+		if(geoms[i].type == SPHERE)
+		{
+		  rrps[i] = sphereIntersectionTest(geoms[i],ref, htemp, ntemp);
+		  //colors[index] = materials[geoms[i].materialid].color;
+		}  
+		else if (geoms[i].type == CUBE)
+		{
+		  rrps[i] = boxIntersectionTest(geoms[i],ref, htemp, ntemp);
+		  //colors[index] = materials[geoms[i].materialid].color;
+		}
+  
+  }
+		  for(int i=0; i < numberOfGeoms ; i++)
+  {
+	
+     if(rrps[i] == -1)
+		rrps[i] = 123456.0 ;
+	     if(rrps[i] <= temp )
+	 {
+		 temp = rrps[i];
+		 rbno = i;      // Storing the index where the least hit value was found so that the corresponding normal could be got back 
+		 
+	 }
+	 if(rrps[i] == rrps[i+1])
+	 {
+		flag++;
+	 }
+	 if(i == numberOfGeoms-1)
+	 {
+		if(flag == numberOfGeoms)
+			temp = 123456.0;
+	 
+	 }
+	
+  }
+		  glm::vec3 relcolor(0,0,0);
+       if(geoms[rbno].type == SPHERE)
+			relcolor =  color[geoms[rbno].materialid] * 0.1f;
+	   
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //(LCOL * pnod->color * (dot(N,normalize(LPOS - ipoint))))
 		if(shadow == 0)
 		{
-    colors[index] = color[geoms[obno].materialid] *  glm::dot(norms[obno],glm::normalize(LPOS - ips[obno]))   +   glm::vec3(1,1,1) * sc;   //glm::vec3(1,1,1) * 
+    colors[index] = color[geoms[obno].materialid] *  glm::dot(norms[obno],glm::normalize(LPOS - ips[obno]))   +   glm::vec3(1,1,1) * sc   + relcolor;   //glm::vec3(1,1,1) * 
 		}
 		else
 		{
-		colors[index]  = color[geoms[obno].materialid] * 0.4f;
+		colors[index]  = color[geoms[obno].materialid] * 0.3f;
 		}
 }
   //colors[index] = glm::vec3(fabsf(r.direction.x),fabsf(r.direction.y),fabsf(r.direction.z));
