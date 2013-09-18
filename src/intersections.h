@@ -19,6 +19,7 @@ __host__ __device__ glm::vec3 getSignOfRay(ray r);
 __host__ __device__ glm::vec3 getInverseDirectionOfRay(ray r);
 __host__ __device__ float boxIntersectionTest(staticGeom sphere, ray r, glm::vec3& intersectionPoint, glm::vec3& normal);
 __host__ __device__ float sphereIntersectionTest(staticGeom sphere, ray r, glm::vec3& intersectionPoint, glm::vec3& normal);
+__host__ __device__ float triangleIntersectionTest(staticGeom triangle, ray r,glm::vec3 p11,glm::vec3 p12,glm::vec3 p13, glm::vec3& intersectionPoint, glm::vec3& normal);
 __host__ __device__ glm::vec3 getRandomPointOnCube(staticGeom cube, float randomSeed);
 
 //Handy dandy little hashing function that provides seeds for random number generation
@@ -68,6 +69,54 @@ __host__ __device__ glm::vec3 getSignOfRay(ray r){
   return glm::vec3((int)(inv_direction.x < 0), (int)(inv_direction.y < 0), (int)(inv_direction.z < 0));
 }
 
+// Triangle intersection test 
+__host__ __device__ float triangleIntersectionTest(staticGeom triangle, ray r,glm::vec3 p1,glm::vec3 p2,glm::vec3 p3, glm::vec3& intersectionPoint, glm::vec3& normal){
+	 glm::vec3 ro = multiplyMV(triangle.inverseTransform, glm::vec4(r.origin,1.0f));
+	 glm::vec3 rd = glm::normalize(multiplyMV(triangle.inverseTransform, glm::vec4(r.direction,0.0f)));
+
+	 ray rt; rt.origin = ro; rt.direction = rd;
+
+
+	 glm::vec3 n ;
+	n = glm::normalize(glm::cross((p3-p1),(p2-p1)));
+
+
+	glm::vec3 nf = glm::normalize(glm::cross((p3-p1),(p2-p1))) ;
+	//vec4 nn = vec4(nf[0],nf[1],nf[2],0.0f);
+	glm::vec3 onor = multiplyMV(triangle.inverseTransform, glm::vec4(nf,1.0f));
+	//vec4 nv = inverse(transpose(T)) * nn;
+	//onor = (vec3(nv[0],nv[1],nv[2])) ;   // vec3(0,0,1) ;// 
+	//onor = vec3(0,0,1) ;
+	double thit ; 
+	thit  =  (float)(glm::dot(p1,n) - glm::dot(ro,n))/(glm::dot(rd,n)) ;
+	if(thit < 0 )
+		 return -1 ;
+	/*if(thit > 1000)
+		cout << "hmm "<< endl ;*/
+	
+	// check if the intersection with plane was inside triangle ,if not then output -1 
+	float sa,ta ;
+	glm::vec3 w;
+	//r = P + (float) thit * V ;
+	glm::vec3 rr =  getPointOnRay(rt, thit) ; 
+	w = rr - p1 ;
+	// Now using the parametric representation of a plane and finding the s and t values of the equation 
+	// V(s,t) = V0 + s * ( V1 - V0) + t * (V2 - V0);
+	// Find the s and t values using the ray equation . If s >=0 , t >=0 & s+t <= 0 ,then the point lies inside the triangle
+	glm::vec3 u,v;
+	u = p2-p1;
+	v = p3-p1;
+	float den = pow(glm::dot(u,v),2) - (glm::dot(u,u) * glm::dot(v,v)) ; 
+	sa = (glm::dot(u,v)*glm::dot(w,v)  -  glm::dot(v,v) * glm::dot(w,u))/den ;
+	ta = (glm::dot(u,v)*glm::dot(w,u)  -  glm::dot(u,u) * glm::dot(w,v))/den ;
+	
+	if ((sa >= 0) && (ta >= 0) && (sa+ta <= 1+0.001) )
+	return thit;
+	else
+	return -1;
+
+
+}
 //TODO: IMPLEMENT THIS FUNCTION
 //Cube intersection test, return -1 if no intersection, otherwise, distance to intersection
 __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& intersectionPoint, glm::vec3& normal){
