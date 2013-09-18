@@ -68,7 +68,7 @@ __host__ __device__ glm::vec3 getSignOfRay(ray r){
   glm::vec3 inv_direction = getInverseDirectionOfRay(r);
   return glm::vec3((int)(inv_direction.x < 0), (int)(inv_direction.y < 0), (int)(inv_direction.z < 0));
 }
-
+// for object loading purposes
 // Triangle intersection test 
 __host__ __device__ float triangleIntersectionTest(staticGeom triangle, ray r,glm::vec3 p1,glm::vec3 p2,glm::vec3 p3, glm::vec3& intersectionPoint, glm::vec3& normal){
 	 glm::vec3 ro = multiplyMV(triangle.inverseTransform, glm::vec4(r.origin,1.0f));
