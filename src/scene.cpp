@@ -313,13 +313,14 @@ int scene::loadmesh(string filename )
 	//result = convert.str();
 	// assigning a number to the output filename 
 	//actualfile = filename  ; // result+".obj";
-	std::ifstream in(filename );//
+	std::ifstream in("bunny.obj" );//
 	char c[256];
-	
+	cout << filename <<endl ;
 	char buf[256];
 	while(!in.eof())
 	{
 		in.getline(c,256);
+//		cout << "reading" << std::string(c) << endl ;
 		if ( std::string(c) == "")
 			continue;
 		coord.push_back(new std::string(c));
@@ -335,7 +336,7 @@ int scene::loadmesh(string filename )
 			float tmpx,tmpy,tmpz;
 			sscanf(coord[i]->c_str(),"%c %f %f %f",&tmp ,&tmpx ,&tmpy , &tmpz);
 			vertex.push_back(new coordinate(tmpx , tmpy,tmpz));
-			//cout << "vertext is " << vertex[i]->x << " "<< vertex[i]->y << " " << vertex[i]->z  << endl;
+			cout << "vertext is " << i <<endl ;// vertex[i]->x << " "<< vertex[i]->y << " " << vertex[i]->z  << endl;
 		}
 		else if((*coord[i])[0] == 'f')
 		{

@@ -122,14 +122,14 @@ __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* 
 //TODO: IMPLEMENT THIS FUNCTION
 //Core raytracer kernel
 __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, int rayDepth, glm::vec3* colors,
-                            staticGeom* geoms, int numberOfGeoms,glm::vec3* color,glm::vec3* myvertex, int numVertices){          //
+                            staticGeom* geoms, int numberOfGeoms,material* cudamat ,int numberOfMaterials,glm::vec3* color,glm::vec3* myvertex, int numVertices){          //
 
   int x = (blockIdx.x * blockDim.x) + threadIdx.x;
   int y = (blockIdx.y * blockDim.y) + threadIdx.y;
   int index = x + (y * resolution.x);
   int p = numberOfGeoms;
-  glm::vec3 norms[20],ips[20];
-  float rips[20];
+  glm::vec3 norms[10],ips[10];
+  float rips[10];
   if((x<=resolution.x && y<=resolution.y)){
    ray r = raycastFromCameraKernel(resolution,time,x,y,cam.position,cam.view,cam.up,cam.fov);
    glm::vec3 p11(0,0.5,0);
@@ -151,9 +151,9 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
 		else if (geoms[i].type == MESH)
 		{ 
 			int flag = 0 ;
-			float t , at[20];
+			float t , at[100];
 			int p = 0;
-			glm::vec3 curnorm[20];
+			glm::vec3 curnorm[100];
 		for(int k=0 ;k < numVertices - 2 ; k= k+3)           //(int)numVertices - 100 
 		{
 			t = triangleIntersectionTest(geoms[i],r,myvertex[k],myvertex[k+1],myvertex[k+2], ips[i], norms[i]);
@@ -221,7 +221,7 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
 }
 else
 {
-	  glm::vec3 LPOS = glm::vec3(0,7,7);
+	  glm::vec3 LPOS = glm::vec3(0,8,5);
 	  //ipoint = (camera + thit * direc);
 	
 
@@ -245,36 +245,36 @@ else
 	   float len = glm::length(neyep - LPOS) ;
 	  // float sit;
 	   glm::vec3 htemp,ntemp;
-	 //   for(int i=0 ; i <numberOfGeoms ; i++)
-  //      {
-		//if(i != obno)
-		//{
-		//	if(geoms[i].type == SPHERE)
-		//{
-		//  sit = sphereIntersectionTest(geoms[i],s, htemp, ntemp);
-		//  //colors[index] = materials[geoms[i].materialid].color;
-		//}  
-		//else if (geoms[i].type == CUBE)
-		//{
-		//  sit = boxIntersectionTest(geoms[i],s,  htemp, ntemp);
-		//  //colors[index] = materials[geoms[i].materialid].color;
-		//}
-		//else if (geoms[i].type == MESH)
-		//{
-		//  sit = triangleIntersectionTest(geoms[i],s,p11,p12,p13, htemp, ntemp);
-		//  //colors[index] = materials[geoms[i].materialid].color;
-		//}
-  //       //sit = rayintersect(allmynodes[j],ipoint, normalize(LPOS-ipoint));
+	    for(int i=0 ; i <numberOfGeoms ; i++)
+        {
+		if(i != obno)
+		{
+			if(geoms[i].type == SPHERE)
+		{
+		  sit = sphereIntersectionTest(geoms[i],s, htemp, ntemp);
+		  //colors[index] = materials[geoms[i].materialid].color;
+		}  
+		else if (geoms[i].type == CUBE)
+		{
+		  sit = boxIntersectionTest(geoms[i],s,  htemp, ntemp);
+		  //colors[index] = materials[geoms[i].materialid].color;
+		}
+		else if (geoms[i].type == MESH)
+		{
+		  sit = triangleIntersectionTest(geoms[i],s,p11,p12,p13, htemp, ntemp);
+		  //colors[index] = materials[geoms[i].materialid].color;
+		}
+         //sit = rayintersect(allmynodes[j],ipoint, normalize(LPOS-ipoint));
 	
-	 //    if(sit != -1)
-	 //      {
-		//	if ( glm::length(htemp - neyep) < len)
-		//		shadow = 1 ;   //  Shadow == 1 means the point of interesection is under a shadow , if 0 then no shadow
-		//	else
-		//		shadow = 0 ;
-		// }
-		//}	 
-		//}
+	     if(sit != -1)
+	       {
+			if ( glm::length(htemp - neyep) < len)
+				shadow = 1 ;   //  Shadow == 1 means the point of interesection is under a shadow , if 0 then no shadow
+			else
+				shadow = 0 ;
+		 }
+		}	 
+		}
 
 	// Reflections ////////////////////////////////////////////////////////////////////
 
@@ -328,7 +328,7 @@ else
   //}
 		  glm::vec3 relcolor(0,0,0);
        if(geoms[rbno].type == SPHERE)
-			relcolor =  color[geoms[rbno].materialid] * 0.1f;
+			relcolor = cudamat[geoms[obno].materialid].color * 0.1f;
 	   
 
 
@@ -336,11 +336,12 @@ else
     //(LCOL * pnod->color * (dot(N,normalize(LPOS - ipoint))))
 		if(shadow == 0)
 		{
-    colors[index] = color[geoms[obno].materialid] *  glm::dot(norms[obno],glm::normalize(LPOS - ips[obno]))  ;// +   glm::vec3(1,1,1) * sc   + relcolor;   //glm::vec3(1,1,1) * 
+  //  colors[index] = color[geoms[obno].materialid] *  glm::dot(norms[obno],glm::normalize(LPOS - ips[obno]))  ;// +   glm::vec3(1,1,1) * sc   + relcolor;   //glm::vec3(1,1,1) * 
+	colors[index] = cudamat[geoms[obno].materialid].color *  glm::dot(norms[obno],glm::normalize(LPOS - ips[obno])) +   glm::vec3(1,1,1) * sc  ;
 		}
 		else
 		{
-		colors[index]  = color[geoms[obno].materialid] * 0.3f;
+		colors[index]  = cudamat[geoms[obno].materialid].color * 0.3f;
 		}
 }
   //colors[index] = glm::vec3(fabsf(r.direction.x),fabsf(r.direction.y),fabsf(r.direction.z));
@@ -396,6 +397,27 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
   cudaMalloc((void**)&cudageoms, numberOfGeoms*sizeof(staticGeom));
   cudaMemcpy( cudageoms, geomList, numberOfGeoms*sizeof(staticGeom), cudaMemcpyHostToDevice);
   
+  // package materials and send it to GPU
+   material* matList = new material[numberOfMaterials];
+  for(int i=0; i<numberOfMaterials; i++){
+    material newMaterial;
+    newMaterial.color = materials[i].color;
+    newMaterial.specularExponent = materials[i].specularExponent;
+    newMaterial.specularColor = materials[i].specularColor;
+	newMaterial.hasReflective = materials[i].hasReflective;
+    newMaterial.hasRefractive = materials[i].hasRefractive;
+	newMaterial.indexOfRefraction = materials[i].indexOfRefraction;
+	newMaterial.hasScatter = materials[i].hasScatter;
+	newMaterial.absorptionCoefficient = materials[i].absorptionCoefficient;
+	newMaterial.reducedScatterCoefficient = materials[i].reducedScatterCoefficient;
+	newMaterial.emittance = materials[i].emittance;
+	matList[i] = newMaterial;
+  }
+  
+  material* cudamat = NULL;
+  cudaMalloc((void**)&cudamat, numberOfMaterials*sizeof(material));
+  cudaMemcpy( cudamat, matList, numberOfMaterials*sizeof(material), cudaMemcpyHostToDevice);
+
   //package camera
   cameraData cam;
   cam.resolution = renderCam->resolution;
@@ -413,7 +435,7 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
   cudaMemcpy(tcolor , &materials[i].color, sizeof(glm::vec3), cudaMemcpyHostToDevice);
   }
   //kernel launches
-  raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms,color,mvertex,numVertices);  //
+  raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms,cudamat ,numberOfMaterials, color,mvertex,numVertices);  //
 
   sendImageToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(PBOpos, renderCam->resolution, cudaimage);
 
