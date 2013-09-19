@@ -122,7 +122,7 @@ __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* 
 //TODO: IMPLEMENT THIS FUNCTION
 //Core raytracer kernel
 __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, int rayDepth, glm::vec3* colors,
-                            staticGeom* geoms, int numberOfGeoms,glm::vec3* color){          //
+                            staticGeom* geoms, int numberOfGeoms,glm::vec3* color,glm::vec3* myvertex, int numVertices){          //
 
   int x = (blockIdx.x * blockDim.x) + threadIdx.x;
   int y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -132,7 +132,9 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
   float rips[20];
   if((x<=resolution.x && y<=resolution.y)){
    ray r = raycastFromCameraKernel(resolution,time,x,y,cam.position,cam.view,cam.up,cam.fov);
-
+   glm::vec3 p11(0,0.5,0);
+   glm::vec3 p12(1,-0.5,0);
+   glm::vec3 p13(-1,-0.5,0);
   for(int i=0; i < numberOfGeoms ; i++)
   {
 		
@@ -145,6 +147,45 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
 		{
 		  rips[i] = boxIntersectionTest(geoms[i],r, ips[i], norms[i]);
 		  //colors[index] = materials[geoms[i].materialid].color;
+		}
+		else if (geoms[i].type == MESH)
+		{ 
+			int flag = 0 ;
+			float t , at[20];
+			int p = 0;
+			glm::vec3 curnorm[20];
+		for(int k=0 ;k < numVertices - 2 ; k= k+3)           //(int)numVertices - 100 
+		{
+			t = triangleIntersectionTest(geoms[i],r,myvertex[k],myvertex[k+1],myvertex[k+2], ips[i], norms[i]);
+			if(t != -1)
+			{
+				curnorm[p]  = norms[i];
+				flag = 1;
+				at[p] = t;
+				p++;
+			}
+		}  //colors[index] = materials[geoms[i].materialid].color;
+		float ntemp = at[0];   
+		int nindex = 0;
+		if(flag == 1)
+		{
+			for(int s =0 ; s < p ; s++)
+			{
+				if(at[s] < ntemp)
+				{
+					ntemp = at[s];
+					nindex = s;
+				}
+			 // triangleIntersectionTest(geoms[i],r,p11,p12,p13, ips[i], norms[i]);
+			
+			}
+
+			rips[i] = at[nindex] ;
+			norms[i] = curnorm[nindex];
+		}
+		else
+			rips[i] = -1;
+		
 		}
   
   }
@@ -204,31 +245,36 @@ else
 	   float len = glm::length(neyep - LPOS) ;
 	  // float sit;
 	   glm::vec3 htemp,ntemp;
-	    for(int i=0 ; i <numberOfGeoms ; i++)
-        {
-		if(i != obno)
-		{
-			if(geoms[i].type == SPHERE)
-		{
-		  sit = sphereIntersectionTest(geoms[i],s, htemp, ntemp);
-		  //colors[index] = materials[geoms[i].materialid].color;
-		}  
-		else if (geoms[i].type == CUBE)
-		{
-		  sit = boxIntersectionTest(geoms[i],s,  htemp, ntemp);
-		  //colors[index] = materials[geoms[i].materialid].color;
-		}
-         //sit = rayintersect(allmynodes[j],ipoint, normalize(LPOS-ipoint));
+	 //   for(int i=0 ; i <numberOfGeoms ; i++)
+  //      {
+		//if(i != obno)
+		//{
+		//	if(geoms[i].type == SPHERE)
+		//{
+		//  sit = sphereIntersectionTest(geoms[i],s, htemp, ntemp);
+		//  //colors[index] = materials[geoms[i].materialid].color;
+		//}  
+		//else if (geoms[i].type == CUBE)
+		//{
+		//  sit = boxIntersectionTest(geoms[i],s,  htemp, ntemp);
+		//  //colors[index] = materials[geoms[i].materialid].color;
+		//}
+		//else if (geoms[i].type == MESH)
+		//{
+		//  sit = triangleIntersectionTest(geoms[i],s,p11,p12,p13, htemp, ntemp);
+		//  //colors[index] = materials[geoms[i].materialid].color;
+		//}
+  //       //sit = rayintersect(allmynodes[j],ipoint, normalize(LPOS-ipoint));
 	
-	     if(sit != -1)
-	       {
-			if ( glm::length(htemp - neyep) < len)
-				shadow = 1 ;   //  Shadow == 1 means the point of interesection is under a shadow , if 0 then no shadow
-			else
-				shadow = 0 ;
-		 }
-		}	 
-		}
+	 //    if(sit != -1)
+	 //      {
+		//	if ( glm::length(htemp - neyep) < len)
+		//		shadow = 1 ;   //  Shadow == 1 means the point of interesection is under a shadow , if 0 then no shadow
+		//	else
+		//		shadow = 0 ;
+		// }
+		//}	 
+		//}
 
 	// Reflections ////////////////////////////////////////////////////////////////////
 
@@ -237,44 +283,49 @@ else
 		ref.direction = ref1 ;
 		int rbno = 0;
 		float rrps[20];
-		  for(int i=0; i < numberOfGeoms ; i++)
-  {
-		
-		if(geoms[i].type == SPHERE)
-		{
-		  rrps[i] = sphereIntersectionTest(geoms[i],ref, htemp, ntemp);
-		  //colors[index] = materials[geoms[i].materialid].color;
-		}  
-		else if (geoms[i].type == CUBE)
-		{
-		  rrps[i] = boxIntersectionTest(geoms[i],ref, htemp, ntemp);
-		  //colors[index] = materials[geoms[i].materialid].color;
-		}
-  
-  }
-		  for(int i=0; i < numberOfGeoms ; i++)
-  {
+		//  for(int i=0; i < numberOfGeoms ; i++)
+  //{
+		//
+		//if(geoms[i].type == SPHERE)
+		//{
+		//  rrps[i] = sphereIntersectionTest(geoms[i],ref, htemp, ntemp);
+		//  //colors[index] = materials[geoms[i].materialid].color;
+		//}  
+		//else if (geoms[i].type == CUBE)
+		//{
+		//  rrps[i] = boxIntersectionTest(geoms[i],ref, htemp, ntemp);
+		//  //colors[index] = materials[geoms[i].materialid].color;
+		//}
+		//else if (geoms[i].type == MESH)
+		//{
+		//  rrps[i] = triangleIntersectionTest(geoms[i],ref,p11,p12,p13, htemp , ntemp);
+		//  //colors[index] = materials[geoms[i].materialid].color;
+		//}
+  //
+  //}
+		//  for(int i=0; i < numberOfGeoms ; i++)
+  //{
 	
-     if(rrps[i] == -1)
-		rrps[i] = 123456.0 ;
-	     if(rrps[i] <= temp )
-	 {
-		 temp = rrps[i];
-		 rbno = i;      // Storing the index where the least hit value was found so that the corresponding normal could be got back 
-		 
-	 }
-	 if(rrps[i] == rrps[i+1])
-	 {
-		flag++;
-	 }
-	 if(i == numberOfGeoms-1)
-	 {
-		if(flag == numberOfGeoms)
-			temp = 123456.0;
-	 
-	 }
+  //   if(rrps[i] == -1)
+		//rrps[i] = 123456.0 ;
+	 //    if(rrps[i] <= temp )
+	 //{
+		// temp = rrps[i];
+		// rbno = i;      // Storing the index where the least hit value was found so that the corresponding normal could be got back 
+		// 
+	 //}
+	 //if(rrps[i] == rrps[i+1])
+	 //{
+		//flag++;
+	 //}
+	 //if(i == numberOfGeoms-1)
+	 //{
+		//if(flag == numberOfGeoms)
+		//	temp = 123456.0;
+	 //
+	 //}
 	
-  }
+  //}
 		  glm::vec3 relcolor(0,0,0);
        if(geoms[rbno].type == SPHERE)
 			relcolor =  color[geoms[rbno].materialid] * 0.1f;
@@ -285,7 +336,7 @@ else
     //(LCOL * pnod->color * (dot(N,normalize(LPOS - ipoint))))
 		if(shadow == 0)
 		{
-    colors[index] = color[geoms[obno].materialid] *  glm::dot(norms[obno],glm::normalize(LPOS - ips[obno]))   +   glm::vec3(1,1,1) * sc   + relcolor;   //glm::vec3(1,1,1) * 
+    colors[index] = color[geoms[obno].materialid] *  glm::dot(norms[obno],glm::normalize(LPOS - ips[obno]))  ;// +   glm::vec3(1,1,1) * sc   + relcolor;   //glm::vec3(1,1,1) * 
 		}
 		else
 		{
@@ -304,12 +355,13 @@ else
 
 //TODO: FINISH THIS FUNCTION
 // Wrapper for the __global__ call that sets up the kernel calls and does a ton of memory management
-void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iterations, material* materials, int numberOfMaterials, geom* geoms, int numberOfGeoms){
+void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iterations, material* materials, int numberOfMaterials, geom* geoms, int numberOfGeoms,std::vector<glm::vec3> mypoints){
   
   int traceDepth = 1; //determines how many bounces the raytracer traces
 
   // set up crucial magic
   int tileSize = 8;
+  int numVertices = mypoints.size();
   dim3 threadsPerBlock(tileSize, tileSize);
   dim3 fullBlocksPerGrid((int)ceil(float(renderCam->resolution.x)/float(tileSize)), (int)ceil(float(renderCam->resolution.y)/float(tileSize)));
   
@@ -318,6 +370,14 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
   cudaMalloc((void**)&cudaimage, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(glm::vec3));
   cudaMemcpy( cudaimage, renderCam->image, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(glm::vec3), cudaMemcpyHostToDevice);
   
+  //Send vertices of the mesh to GPU
+  glm::vec3* mvertex = NULL;
+  cudaMalloc((void**)&mvertex,mypoints.size() * sizeof(glm::vec3));
+  for(int i=0; i < mypoints.size(); i++){
+	   
+	   cudaMemcpy( &mvertex[i] , &mypoints[i], sizeof(glm::vec3), cudaMemcpyHostToDevice);
+  }
+
   //package geometry and materials and sent to GPU
   staticGeom* geomList = new staticGeom[numberOfGeoms];
   for(int i=0; i<numberOfGeoms; i++){
@@ -353,7 +413,7 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
   cudaMemcpy(tcolor , &materials[i].color, sizeof(glm::vec3), cudaMemcpyHostToDevice);
   }
   //kernel launches
-  raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms,color);  //
+  raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms,color,mvertex,numVertices);  //
 
   sendImageToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(PBOpos, renderCam->resolution, cudaimage);
 

@@ -13,6 +13,7 @@
 #include <cuda.h>
 #include <cmath>
 #include "sceneStructs.h"
+#include <vector>
 
 #if CUDA_VERSION >= 5000
     #include <helper_math.h>
@@ -20,6 +21,6 @@
     #include <cutil_math.h>
 #endif
 
-void cudaRaytraceCore(uchar4* pos, camera* renderCam, int frame, int iterations, material* materials, int numberOfMaterials, geom* geoms, int numberOfGeoms);
+void cudaRaytraceCore(uchar4* pos, camera* renderCam, int frame, int iterations, material* materials, int numberOfMaterials, geom* geoms, int numberOfGeoms, std::vector<glm::vec3> mymainpoints);
 
 #endif

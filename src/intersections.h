@@ -68,7 +68,7 @@ __host__ __device__ glm::vec3 getSignOfRay(ray r){
   glm::vec3 inv_direction = getInverseDirectionOfRay(r);
   return glm::vec3((int)(inv_direction.x < 0), (int)(inv_direction.y < 0), (int)(inv_direction.z < 0));
 }
-// for object loading purposes
+
 // Triangle intersection test 
 __host__ __device__ float triangleIntersectionTest(staticGeom triangle, ray r,glm::vec3 p1,glm::vec3 p2,glm::vec3 p3, glm::vec3& intersectionPoint, glm::vec3& normal){
 	 glm::vec3 ro = multiplyMV(triangle.inverseTransform, glm::vec4(r.origin,1.0f));
@@ -79,7 +79,7 @@ __host__ __device__ float triangleIntersectionTest(staticGeom triangle, ray r,gl
 
 	 glm::vec3 n ;
 	n = glm::normalize(glm::cross((p3-p1),(p2-p1)));
-
+	
 
 	glm::vec3 nf = glm::normalize(glm::cross((p3-p1),(p2-p1))) ;
 	//vec4 nn = vec4(nf[0],nf[1],nf[2],0.0f);
@@ -110,8 +110,21 @@ __host__ __device__ float triangleIntersectionTest(staticGeom triangle, ray r,gl
 	sa = (glm::dot(u,v)*glm::dot(w,v)  -  glm::dot(v,v) * glm::dot(w,u))/den ;
 	ta = (glm::dot(u,v)*glm::dot(w,u)  -  glm::dot(u,u) * glm::dot(w,v))/den ;
 	
+	//normal = n;
+	//intersectionPoint = rr;
+
+	 glm::vec3 realIntersectionPoint = multiplyMV(triangle.transform, glm::vec4(getPointOnRay(rt, thit), 1.0));
+     glm::vec3 realOrigin = multiplyMV(triangle.transform, glm::vec4(0,0,0,1));
+	 intersectionPoint = realIntersectionPoint;
+
+	 normal =  glm::normalize(multiplyMV(triangle.transform, glm::vec4(n,0.0f)));
+	 
+     //normal = glm::normalize(realIntersectionPoint - realOrigin);
+        
+     
+
 	if ((sa >= 0) && (ta >= 0) && (sa+ta <= 1+0.001) )
-	return thit;
+	return glm::length(r.origin - realIntersectionPoint);
 	else
 	return -1;
 
