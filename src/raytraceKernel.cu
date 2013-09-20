@@ -179,7 +179,7 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
 	}
 	else
 	{
-	   glm::vec3 LPOS = glm::vec3(0,8.5,0);
+	   glm::vec3 LPOS = glm::vec3(0,9.5,0.0); // multiplyMV(geoms[glid].transform, glm::vec4(glm::vec3(0,-1,0),1.0f));// + glm::vec3(0,-2.0,0); //glm::vec3(0,8.5,0);
 
 	 //   // Calculating the specular component
 	    glm::vec3 lig =  dips - LPOS ;
@@ -201,11 +201,12 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
 		ray ref;
 		ref.origin = neyep;
 		ref.direction = ref1 ;
+		glm::vec3 relcolor(0,0,0);
 		glm::vec3 rips,rnorm;
 		int rbno = -1;
-        if(cudamat[geoms[obno].materialid].hasReflective != 0  &&  shadow != 1)
+        if(cudamat[geoms[obno].materialid].hasReflective != 0  ) //&&  shadow != 1
 			rbno = getreflectedcolor(geoms,numberOfGeoms,ref,myvertex,numVertices,rips,rnorm);
-		glm::vec3 relcolor(0,0,0);
+		
 		if(rbno != -1 )
 		{
 			relcolor = cudamat[geoms[rbno].materialid].color *cudamat[geoms[rbno].materialid].hasReflective ; //
@@ -222,9 +223,19 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
 	//	colors[index]  =  glm::vec3(0,0,0);//cudamat[geoms[obno].materialid].color * 0.1f; //
 		}
 
+	 glm::vec4 r1(2,0,0,0);
+	 glm::vec4 r2(0,1,0,9.5);
+	 glm::vec4 r3(0,0,2,0);
+	 glm::vec4 r4(0,0,0,1);
+
+	 cudaMat4 ittrans;
+	 ittrans.x = r1;	
+	 ittrans.y = r2;
+     ittrans.z = r3;
+	 ittrans.w = r4;
 
 		//Soft shadows
-		int dim = 30;
+		int dim = 20;
 		glm::vec3 finalCol(0,0,0);
 		float st = (1.0f/dim);
 		float w = (1.0f/(dim*dim));
@@ -233,18 +244,22 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
 		{
 			for(int j=0 ; j < dim ; j++)
 			{
-			tlpos = glm::vec3(-0.5 + (st * i), 0.0 , -0.5 + (st * j));
-			LPOS = multiplyMV(geoms[glid].transform, glm::vec4(tlpos,1.0f)) + glm::vec3(0,-2.0,0);
+			tlpos = glm::vec3(-0.5 + (st * i), 0, -0.5 + (st * j));
+			LPOS = multiplyMV(ittrans, glm::vec4(tlpos,1.0f));//+ glm::vec3(0,-1.0,0);  //     geoms[glid].transform 
+			//LPOS.y = 9.5;
 			s.direction = glm::normalize(LPOS-neyep);
 			shadow = checkForShadows(geoms,numberOfGeoms,s,myvertex,numVertices,LPOS,obno);
 			calculateColoratPoint(geoms,dips,LPOS,dnorm,relcolor,obno,mycolor,cam.position,cudamat);
 			if(shadow == 0)
-				finalCol = finalCol + mycolor;
+				finalCol = finalCol + mycolor  ;
 			else
-				finalCol = finalCol + amb;
+				finalCol = finalCol + (amb * 0.4f);// +  (cudamat[geoms[obno].materialid].color *  glm::dot(dnorm,glm::normalize(LPOS - dips))) * 0.1f ;
 			}
 		}
-		colors[index] = finalCol * w;
+		if(cudamat[geoms[obno].materialid].emittance == 0)
+		colors[index] = (finalCol * w) ; //(relcolor ); //
+		else
+		colors[index] = (finalCol * w) * 3.0f   ;
 	}
   }
 
@@ -459,21 +474,24 @@ int __device__ getreflectedcolor(staticGeom* geoms,int numberOfGeoms,ray ref, gl
 void __device__  calculateColoratPoint(staticGeom* geoms,glm::vec3 dips,glm::vec3 LPOS,glm::vec3 dnorm,glm::vec3 relcolor,int obno, glm::vec3& mycolor,glm::vec3 cpos,material* cudamat)
 {
 
-	    glm::vec3 lig =  dips - LPOS ;
+	    glm::vec3 lig =  glm::normalize(dips - LPOS) ;
+		float sc = 0;
 		glm::vec3 ref1  =  lig - (2.0f * dnorm * (glm::dot(dnorm,lig)));     // glm::normalize(glm::reflect(-(lig) , glm::normalize(norms[obno])));
 		float dt = glm::dot(glm::normalize(cpos),glm::normalize(ref1));
 		if(dt < 0)
 			 dt = 0;
-		float sc = pow(dt,30);
+		if(cudamat[geoms[obno].materialid].specularExponent != 0)
+			sc = pow(dt,cudamat[geoms[obno].materialid].specularExponent);
 
+	
 
 		//Final output color
-		float kd = 0.75f,ks = 0.1f,kss = 0.1f,ka = 0.05;
+		float kd = 0.7f,ks = 0.1f,kss = 0.2f,ka = 0.1;
 		glm::vec3 amb =  cudamat[geoms[obno].materialid].color ;
 		glm::vec3 dif =  cudamat[geoms[obno].materialid].color *  glm::dot(dnorm,glm::normalize(LPOS - dips));
-		glm::vec3 spe =  glm::vec3(1,1,1) * sc;
-		glm::vec3 ref =  relcolor ;
+		glm::vec3 spe =  glm::vec3(1,1,1) * sc ;
+		glm::vec3 reff =  relcolor  ;
 
-		mycolor = (ka * amb + kd * dif + kss * spe) * (1 - ks) + (ref * ks);
+		mycolor = ( dif +  spe) * 1.0f + (reff * 0.05f) ; //(ka * amb + kd * dif + kss * spe) * (1 - ks) + (ref * ks);
 
 }
