@@ -132,186 +132,111 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
   glm::vec3 norms[10],ips[10];
   float rips[10];
 
+  
   //Hard coded triangle vertices
   glm::vec3 p11(0,0.5,0);
   glm::vec3 p12(1,-0.5,0);
   glm::vec3 p13(-1,-0.5,0);
 
+  int obno=0;
+  float inf = 123456.0;
+  glm::vec3 dnorm, dips, tnorm, tips;
+  float dhit = 123456.0,thit ;
+
   if((x<=resolution.x && y<=resolution.y)){
   
   ray r = raycastFromCameraKernel(resolution,time,x,y,cam.position,cam.view,cam.up,cam.fov);
-   
+  
   for(int i=0; i < numberOfGeoms ; i++)
   {
-		
+		// Intersection tests with different objects
 		if(geoms[i].type == SPHERE)
 		{
-		  rips[i] = sphereIntersectionTest(geoms[i],r, ips[i], norms[i]);
+		  thit = sphereIntersectionTest(geoms[i],r, tips, tnorm);
 		}  
 		else if (geoms[i].type == CUBE)
 		{
-		  rips[i] = boxIntersectionTest(geoms[i],r, ips[i], norms[i]);
+		  thit = boxIntersectionTest(geoms[i], r, tips, tnorm);
 		}
 		else if (geoms[i].type == MESH)
 		{ 
-		  rips[i] = meshIntersectionTest(geoms[i],r,myvertex,numVertices, ips[i], norms[i]);
+		  thit = meshIntersectionTest(geoms[i],r,myvertex,numVertices, tips, tnorm);
 		}
-  
+
+		//Finding the closest of the intersection points
+		if(thit == -1)
+			thit = 123456.0;
+
+		if(thit <= dhit)
+		{
+			dhit  = thit;
+			dips  = tips;
+			dnorm = tnorm;
+			obno  = i; 
+		}
+
   }
 
-  float temp = 123456.0;
-  int obno=0,flag=0;
-    for(int i=0; i < numberOfGeoms ; i++)
-  {
-	
-     if(rips[i] == -1)
-		rips[i] = 123456.0 ;
-	     if(rips[i] <= temp )
-	 {
-		 temp = rips[i];
-		 obno = i;      // Storing the index where the least hit value was found so that the corresponding normal could be got back 
-		 
-	 }
-	 if(rips[i] == rips[i+1])
-	 {
-		flag++;
-	 }
-	 if(i == numberOfGeoms-1)
-	 {
-		if(flag == numberOfGeoms)
-			temp = 123456.0;
-	 
-	 }
-	
-  }
-  if( temp == 123456.0)
-{
-	colors[index] = glm::vec3(0,0,0);
-}
+if( dhit == 123456.0)
+	{
+		colors[index] = glm::vec3(0,0,0);
+	}
 else
 {
-	  glm::vec3 LPOS = glm::vec3(0,8,5);
-	  //ipoint = (camera + thit * direc);
-	
+	  glm::vec3 LPOS = glm::vec3(0,8.5,4);
 
-	// Calculating the specular component
-	    
-		glm::vec3 lig =  ips[obno] - LPOS ;
-		glm::vec3 ref1  =  lig - (2.0f * norms[obno] * (glm::dot(norms[obno],lig)));     // glm::normalize(glm::reflect(-(lig) , glm::normalize(norms[obno])));
+	  // Calculating the specular component
+	    glm::vec3 lig =  dips - LPOS ;
+		glm::vec3 ref1  =  lig - (2.0f * dnorm * (glm::dot(dnorm,lig)));     // glm::normalize(glm::reflect(-(lig) , glm::normalize(norms[obno])));
 		float dt = glm::dot(glm::normalize(cam.position),glm::normalize(ref1));
 		if(dt < 0)
 			 dt = 0;
 		 float sc = pow(dt,30);
 
 
-	 // Shadows
-	   int shadow = 0 ;
-	   float sit = 0; ;
-	   glm::vec3 neyep = ips[obno] + ref1 * 0.001f ;
-	   ray s;
-	   s.origin = neyep;
-	   s.direction = glm::normalize(LPOS-ips[obno]);
-	   float len = glm::length(neyep - LPOS) ;
-	  // float sit;
-	   glm::vec3 htemp,ntemp;
-	    for(int i=0 ; i <numberOfGeoms ; i++)
-        {
-		if(i != obno)
-		{
-			if(geoms[i].type == SPHERE)
-		{
-		  sit = sphereIntersectionTest(geoms[i],s, htemp, ntemp);
-		  //colors[index] = materials[geoms[i].materialid].color;
-		}  
-		else if (geoms[i].type == CUBE)
-		{
-		  sit = boxIntersectionTest(geoms[i],s,  htemp, ntemp);
-		  //colors[index] = materials[geoms[i].materialid].color;
-		}
-		else if (geoms[i].type == MESH)
-		{
-		  sit = triangleIntersectionTest(geoms[i],s,p11,p12,p13, htemp, ntemp);
-		  //colors[index] = materials[geoms[i].materialid].color;
-		}
-         //sit = rayintersect(allmynodes[j],ipoint, normalize(LPOS-ipoint));
+	   // Shadows
+	   int shadow = 1 ;
+	 //  float sit = 0; ;
+	  glm::vec3 neyep = dips + ref1 * 0.001f ;
+	  ray s;
+	  s.origin = neyep;
+	  s.direction = glm::normalize(LPOS-neyep);
+	  shadow = checkForShadows(geoms,numberOfGeoms,s,myvertex,numVertices,LPOS,obno);
 	
-	     if(sit != -1)
-	       {
-			if ( glm::length(htemp - neyep) < len)
-				shadow = 1 ;   //  Shadow == 1 means the point of interesection is under a shadow , if 0 then no shadow
-			else
-				shadow = 0 ;
-		 }
-		}	 
-		}
 
 	// Reflections ////////////////////////////////////////////////////////////////////
 
 		ray ref;
 		ref.origin = neyep;
 		ref.direction = ref1 ;
-		int rbno = 0;
-		float rrps[20];
-		//  for(int i=0; i < numberOfGeoms ; i++)
-  //{
-		//
-		//if(geoms[i].type == SPHERE)
-		//{
-		//  rrps[i] = sphereIntersectionTest(geoms[i],ref, htemp, ntemp);
-		//  //colors[index] = materials[geoms[i].materialid].color;
-		//}  
-		//else if (geoms[i].type == CUBE)
-		//{
-		//  rrps[i] = boxIntersectionTest(geoms[i],ref, htemp, ntemp);
-		//  //colors[index] = materials[geoms[i].materialid].color;
-		//}
-		//else if (geoms[i].type == MESH)
-		//{
-		//  rrps[i] = triangleIntersectionTest(geoms[i],ref,p11,p12,p13, htemp , ntemp);
-		//  //colors[index] = materials[geoms[i].materialid].color;
-		//}
-  //
-  //}
-		//  for(int i=0; i < numberOfGeoms ; i++)
-  //{
+		glm::vec3 rips,rnorm;
+		int rbno = -1;
+        if(cudamat[geoms[obno].materialid].hasReflective != 0  &&  shadow != 1)
+		 rbno = getreflectedcolor(geoms,numberOfGeoms,ref,myvertex,numVertices,rips,rnorm);
 	
-  //   if(rrps[i] == -1)
-		//rrps[i] = 123456.0 ;
-	 //    if(rrps[i] <= temp )
-	 //{
-		// temp = rrps[i];
-		// rbno = i;      // Storing the index where the least hit value was found so that the corresponding normal could be got back 
-		// 
-	 //}
-	 //if(rrps[i] == rrps[i+1])
-	 //{
-		//flag++;
-	 //}
-	 //if(i == numberOfGeoms-1)
-	 //{
-		//if(flag == numberOfGeoms)
-		//	temp = 123456.0;
-	 //
-	 //}
-	
-  //}
-		  glm::vec3 relcolor(0,0,0);
-       if(geoms[rbno].type == SPHERE)
-			relcolor = cudamat[geoms[obno].materialid].color * 0.1f;
+		glm::vec3 relcolor(0,0,0);
+		if(rbno != -1 )
+		{
+			relcolor = cudamat[geoms[rbno].materialid].color *cudamat[geoms[rbno].materialid].hasReflective ; //
+		}
 	   
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //(LCOL * pnod->color * (dot(N,normalize(LPOS - ipoint))))
-	   float ab = glm::dot(norms[obno],glm::normalize(LPOS - ips[obno]));
+	   //float ab = glm::dot(norms[obno],glm::normalize(LPOS - ips[obno]));
+		float kd = 0.75f,ks = 0.2f,ka = 0.05;
+		glm::vec3 amb = ka * cudamat[geoms[obno].materialid].color;
 		if(shadow == 0)
 		{
   //  colors[index] = color[geoms[obno].materialid] *  glm::dot(norms[obno],glm::normalize(LPOS - ips[obno]))  ;// +   glm::vec3(1,1,1) * sc   + relcolor;   //glm::vec3(1,1,1) * 
-		colors[index] = cudamat[geoms[obno].materialid].color *  glm::dot(norms[obno],glm::normalize(LPOS - ips[obno])) +   glm::vec3(1,1,1) * sc  ;
+		//colors[index] = cudamat[geoms[obno].materialid].color *  glm::dot(norms[obno],glm::normalize(LPOS - ips[obno])) ;//+   glm::vec3(1,1,1) * sc  ;
+		colors[index] =(amb + kd * cudamat[geoms[obno].materialid].color *  glm::dot(dnorm,glm::normalize(LPOS - dips)) + ks *glm::vec3(1,1,1) * sc)*(1-ks)  + ks * relcolor  ;
+		//colors[index] = cudamat[geoms[obno].materialid].color *  glm::dot(dnorm,glm::normalize(LPOS - dips)) + glm::vec3(1,1,1) * sc;
 		}
 		else
 		{
-		colors[index]  = cudamat[geoms[obno].materialid].color * 0.3f;
+		colors[index]  =  glm::vec3(0,0,0);//cudamat[geoms[obno].materialid].color * 0.1f; //
 		}
 }
   //colors[index] = glm::vec3(fabsf(r.direction.x),fabsf(r.direction.y),fabsf(r.direction.z));
@@ -464,5 +389,84 @@ float __device__ meshIntersectionTest(staticGeom curGeom,ray s,glm::vec3* myvert
 		}
 		else
 			return -1;
+
+}
+
+
+int __device__ checkForShadows(staticGeom* geoms,int numberOfGeoms,ray s, glm::vec3* myvertex, int numVertices,glm::vec3 LPOS,int obno)
+{
+	   int sha = 0;
+	   float sit = 0;
+	   float len = glm::length(s.origin - LPOS) ;
+	  
+	   glm::vec3 htemp,ntemp;
+	    for(int i=0 ; i <numberOfGeoms ; i++)
+        {
+		if(i != -1)
+		{
+			if(geoms[i].type == SPHERE)
+		{
+		  sit = sphereIntersectionTest(geoms[i],s, htemp, ntemp);
+		}  
+		else if (geoms[i].type == CUBE)
+		{
+		  sit = boxIntersectionTest(geoms[i],s,  htemp, ntemp);
+		}
+		else if (geoms[i].type == MESH)
+		{
+		  sit =  meshIntersectionTest(geoms[i],s,myvertex,numVertices,htemp,ntemp);
+		}
+       
+	     if(sit != -1)
+	       {
+			if ( glm::length(htemp - s.origin ) < len)
+				return 1;   //  Shadow == 1 means the point of interesection is under a shadow , if 0 then no shadow
+			else
+				sha = 0 ;
+		 }
+		}	 
+		}
+
+		return sha;
+}
+
+
+int __device__ getreflectedcolor(staticGeom* geoms,int numberOfGeoms,ray ref, glm::vec3* myvertex, int numVertices,glm::vec3& htemp, glm::vec3& ntemp)
+{
+	glm::vec3 rips,rnorm,trips,trnorm;
+	float rhit = 123456.0,trhit ;
+	int rno = -1;
+	for(int i=0; i < numberOfGeoms ; i++)
+  {
+		// Intersection tests with different objects
+		if(geoms[i].type == SPHERE)
+		{
+		  trhit = sphereIntersectionTest(geoms[i],ref, trips,trnorm);
+		}  
+		else if (geoms[i].type == CUBE)
+		{
+		  trhit = boxIntersectionTest(geoms[i], ref, trips,trnorm);
+		}
+		else if (geoms[i].type == MESH)
+		{ 
+		  trhit = meshIntersectionTest(geoms[i],ref,myvertex,numVertices, trips,trnorm);
+		}
+
+		//Finding the closest of the intersection points
+		if(trhit == -1)
+			trhit = 123456.0;
+
+		if(trhit <= rhit)
+		{
+			rhit  = trhit;
+			htemp = trips;
+			ntemp = trnorm;
+			rno   = i; 
+		}
+
+  }
+
+	return rno;
+
 
 }
