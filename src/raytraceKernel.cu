@@ -122,70 +122,39 @@ __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* 
 //TODO: IMPLEMENT THIS FUNCTION
 //Core raytracer kernel
 __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, int rayDepth, glm::vec3* colors,
-                            staticGeom* geoms, int numberOfGeoms,material* cudamat ,int numberOfMaterials,glm::vec3* color,glm::vec3* myvertex, int numVertices){          //
+                            staticGeom* geoms, int numberOfGeoms,material* cudamat ,int numberOfMaterials,glm::vec3* myvertex, int numVertices){          //
 
   int x = (blockIdx.x * blockDim.x) + threadIdx.x;
   int y = (blockIdx.y * blockDim.y) + threadIdx.y;
   int index = x + (y * resolution.x);
+
   int p = numberOfGeoms;
   glm::vec3 norms[10],ips[10];
   float rips[10];
+
+  //Hard coded triangle vertices
+  glm::vec3 p11(0,0.5,0);
+  glm::vec3 p12(1,-0.5,0);
+  glm::vec3 p13(-1,-0.5,0);
+
   if((x<=resolution.x && y<=resolution.y)){
-   ray r = raycastFromCameraKernel(resolution,time,x,y,cam.position,cam.view,cam.up,cam.fov);
-   glm::vec3 p11(0,0.5,0);
-   glm::vec3 p12(1,-0.5,0);
-   glm::vec3 p13(-1,-0.5,0);
+  
+  ray r = raycastFromCameraKernel(resolution,time,x,y,cam.position,cam.view,cam.up,cam.fov);
+   
   for(int i=0; i < numberOfGeoms ; i++)
   {
 		
 		if(geoms[i].type == SPHERE)
 		{
 		  rips[i] = sphereIntersectionTest(geoms[i],r, ips[i], norms[i]);
-		  //colors[index] = materials[geoms[i].materialid].color;
 		}  
 		else if (geoms[i].type == CUBE)
 		{
 		  rips[i] = boxIntersectionTest(geoms[i],r, ips[i], norms[i]);
-		  //colors[index] = materials[geoms[i].materialid].color;
 		}
 		else if (geoms[i].type == MESH)
 		{ 
-			int flag = 0 ;
-			float t , at[100];
-			int p = 0;
-			glm::vec3 curnorm[100];
-		for(int k=0 ;k < numVertices - 2 ; k= k+3)           //(int)numVertices - 100 
-		{
-			t = triangleIntersectionTest(geoms[i],r,myvertex[k],myvertex[k+1],myvertex[k+2], ips[i], norms[i]);
-			if(t != -1)
-			{
-				curnorm[p]  = norms[i];
-				flag = 1;
-				at[p] = t;
-				p++;
-			}
-		}  //colors[index] = materials[geoms[i].materialid].color;
-		float ntemp = at[0];   
-		int nindex = 0;
-		if(flag == 1)
-		{
-			for(int s =0 ; s < p ; s++)
-			{
-				if(at[s] < ntemp)
-				{
-					ntemp = at[s];
-					nindex = s;
-				}
-			 // triangleIntersectionTest(geoms[i],r,p11,p12,p13, ips[i], norms[i]);
-			
-			}
-
-			rips[i] = at[nindex] ;
-			norms[i] = curnorm[nindex];
-		}
-		else
-			rips[i] = -1;
-		
+		  rips[i] = meshIntersectionTest(geoms[i],r,myvertex,numVertices, ips[i], norms[i]);
 		}
   
   }
@@ -334,10 +303,11 @@ else
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //(LCOL * pnod->color * (dot(N,normalize(LPOS - ipoint))))
+	   float ab = glm::dot(norms[obno],glm::normalize(LPOS - ips[obno]));
 		if(shadow == 0)
 		{
   //  colors[index] = color[geoms[obno].materialid] *  glm::dot(norms[obno],glm::normalize(LPOS - ips[obno]))  ;// +   glm::vec3(1,1,1) * sc   + relcolor;   //glm::vec3(1,1,1) * 
-	colors[index] = cudamat[geoms[obno].materialid].color *  glm::dot(norms[obno],glm::normalize(LPOS - ips[obno])) +   glm::vec3(1,1,1) * sc  ;
+		colors[index] = cudamat[geoms[obno].materialid].color *  glm::dot(norms[obno],glm::normalize(LPOS - ips[obno])) +   glm::vec3(1,1,1) * sc  ;
 		}
 		else
 		{
@@ -435,7 +405,7 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
   cudaMemcpy(tcolor , &materials[i].color, sizeof(glm::vec3), cudaMemcpyHostToDevice);
   }
   //kernel launches
-  raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms,cudamat ,numberOfMaterials, color,mvertex,numVertices);  //
+  raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms,cudamat ,numberOfMaterials,mvertex,numVertices);  //
 
   sendImageToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(PBOpos, renderCam->resolution, cudaimage);
 
@@ -451,4 +421,48 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
   cudaThreadSynchronize();
 
   checkCUDAError("Kernel failed!");
+}
+
+float __device__ meshIntersectionTest(staticGeom curGeom,ray s,glm::vec3* myvertex, int numVertices, glm::vec3& mintersect, glm::vec3& mnormal)
+{
+				int flag = 0 ;
+				glm::vec3 ipss,normss;
+			float t , at[100];
+			int p = 0;
+			glm::vec3 curnorm[100] , curipss[100];
+		for(int k=0 ;k < numVertices - 2 ; k= k+3)          
+		{
+			t = triangleIntersectionTest(curGeom,s,myvertex[k],myvertex[k+1],myvertex[k+2], ipss, normss);
+			if(t != -1)
+			{
+				curnorm[p]  = normss;
+				curipss[p]  = ipss;
+				flag = 1;
+				at[p] = t;
+				p++;
+			}
+		}  //colors[index] = materials[geoms[i].materialid].color;
+		float ntemp = at[0];   
+		int nindex = 0;
+		if(flag == 1)
+		{
+			for(int s =0 ; s < p ; s++)
+			{
+				if(at[s] < ntemp)
+				{
+					ntemp = at[s];
+					nindex = s;
+				}
+			 // triangleIntersectionTest(geoms[i],r,p11,p12,p13, ips[i], norms[i]);
+			
+			}
+
+			
+			mnormal    = curnorm[nindex];
+			mintersect = curipss[nindex];
+			return  at[nindex] ;
+		}
+		else
+			return -1;
+
 }
