@@ -18,7 +18,7 @@ Here are the output images from my CUDA ray tracer
 1) With Soft shadows and reflections. Area light at the center .
 
 
-
+![alt tag](https://raw.github.com/vivreddy/Project1-RayTracer/master/renders/1.png)
 
 
 
@@ -26,7 +26,7 @@ Here are the output images from my CUDA ray tracer
 2)With Soft shadows, reflections and object loader.
 
 
-
+![alt tag](https://raw.github.com/vivreddy/Project1-RayTracer/master/renders/3.png)
 
 
 
