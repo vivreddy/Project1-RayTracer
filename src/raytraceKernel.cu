@@ -128,25 +128,18 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
   int y = (blockIdx.y * blockDim.y) + threadIdx.y;
   int index = x + (y * resolution.x);
 
-  int p = numberOfGeoms;
-  glm::vec3 norms[10],ips[10];
-  float rips[10];
-
-  
-  //Hard coded triangle vertices
-  glm::vec3 p11(0,0.5,0);
-  glm::vec3 p12(1,-0.5,0);
-  glm::vec3 p13(-1,-0.5,0);
-
+  //Initializing variables for intersection
   int obno=0;
   float inf = 123456.0;
   glm::vec3 dnorm, dips, tnorm, tips;
   float dhit = 123456.0,thit ;
+  int glid;
 
   if((x<=resolution.x && y<=resolution.y)){
   
   ray r = raycastFromCameraKernel(resolution,time,x,y,cam.position,cam.view,cam.up,cam.fov);
   
+  // Finding the interection with geometrys
   for(int i=0; i < numberOfGeoms ; i++)
   {
 		// Intersection tests with different objects
@@ -175,78 +168,87 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
 			obno  = i; 
 		}
 
+		if(geoms[i].materialid == 8)
+			glid = i;
   }
 
-if( dhit == 123456.0)
+	if( dhit == 123456.0)
 	{
+		//Output the background color
 		colors[index] = glm::vec3(0,0,0);
 	}
-else
-{
-	  glm::vec3 LPOS = glm::vec3(0,8.5,4);
+	else
+	{
+	   glm::vec3 LPOS = glm::vec3(0,8.5,0);
 
-	  // Calculating the specular component
+	 //   // Calculating the specular component
 	    glm::vec3 lig =  dips - LPOS ;
 		glm::vec3 ref1  =  lig - (2.0f * dnorm * (glm::dot(dnorm,lig)));     // glm::normalize(glm::reflect(-(lig) , glm::normalize(norms[obno])));
-		float dt = glm::dot(glm::normalize(cam.position),glm::normalize(ref1));
-		if(dt < 0)
-			 dt = 0;
-		 float sc = pow(dt,30);
+		//float dt = glm::dot(glm::normalize(cam.position),glm::normalize(ref1));
+		//if(dt < 0)
+		//	 dt = 0;
+		//float sc = pow(dt,30);
 
+		// Shadows
+	    int shadow = 1 ;
+		glm::vec3 neyep = dips + ref1 * 0.001f ;
+		ray s;
+		s.origin = neyep;
+		/*s.direction = glm::normalize(LPOS-neyep);
+		shadow = checkForShadows(geoms,numberOfGeoms,s,myvertex,numVertices,LPOS,obno);*/
 
-	   // Shadows
-	   int shadow = 1 ;
-	 //  float sit = 0; ;
-	  glm::vec3 neyep = dips + ref1 * 0.001f ;
-	  ray s;
-	  s.origin = neyep;
-	  s.direction = glm::normalize(LPOS-neyep);
-	  shadow = checkForShadows(geoms,numberOfGeoms,s,myvertex,numVertices,LPOS,obno);
-	
-
-	// Reflections ////////////////////////////////////////////////////////////////////
-
+		// Reflections 
 		ray ref;
 		ref.origin = neyep;
 		ref.direction = ref1 ;
 		glm::vec3 rips,rnorm;
 		int rbno = -1;
         if(cudamat[geoms[obno].materialid].hasReflective != 0  &&  shadow != 1)
-		 rbno = getreflectedcolor(geoms,numberOfGeoms,ref,myvertex,numVertices,rips,rnorm);
-	
+			rbno = getreflectedcolor(geoms,numberOfGeoms,ref,myvertex,numVertices,rips,rnorm);
 		glm::vec3 relcolor(0,0,0);
 		if(rbno != -1 )
 		{
 			relcolor = cudamat[geoms[rbno].materialid].color *cudamat[geoms[rbno].materialid].hasReflective ; //
 		}
 	   
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //(LCOL * pnod->color * (dot(N,normalize(LPOS - ipoint))))
-	   //float ab = glm::dot(norms[obno],glm::normalize(LPOS - ips[obno]));
-		float kd = 0.75f,ks = 0.2f,ka = 0.05;
+		//Final output color
+		float kd = 0.75f,ks = 0.2f,ka = 0.08;
 		glm::vec3 amb = ka * cudamat[geoms[obno].materialid].color;
-		if(shadow == 0)
-		{
-  //  colors[index] = color[geoms[obno].materialid] *  glm::dot(norms[obno],glm::normalize(LPOS - ips[obno]))  ;// +   glm::vec3(1,1,1) * sc   + relcolor;   //glm::vec3(1,1,1) * 
-		//colors[index] = cudamat[geoms[obno].materialid].color *  glm::dot(norms[obno],glm::normalize(LPOS - ips[obno])) ;//+   glm::vec3(1,1,1) * sc  ;
-		colors[index] =(amb + kd * cudamat[geoms[obno].materialid].color *  glm::dot(dnorm,glm::normalize(LPOS - dips)) + ks *glm::vec3(1,1,1) * sc)*(1-ks)  + ks * relcolor  ;
-		//colors[index] = cudamat[geoms[obno].materialid].color *  glm::dot(dnorm,glm::normalize(LPOS - dips)) + glm::vec3(1,1,1) * sc;
+		if(shadow == 0){
+	//	colors[index] =(amb + kd * cudamat[geoms[obno].materialid].color *  glm::dot(dnorm,glm::normalize(LPOS - dips)) + ks *glm::vec3(1,1,1) * sc)*(1-ks)  + ks * relcolor  ;
+		//colors[index] = cudamat[geoms[obno].materialid].color *  glm::dot(dnorm,glm::normalize(LPOS - dips)) + glm::vec3(1,1,1) * sc + + relcolor;
 		}
-		else
-		{
-		colors[index]  =  glm::vec3(0,0,0);//cudamat[geoms[obno].materialid].color * 0.1f; //
+		else{
+	//	colors[index]  =  glm::vec3(0,0,0);//cudamat[geoms[obno].materialid].color * 0.1f; //
 		}
-}
-  //colors[index] = glm::vec3(fabsf(r.direction.x),fabsf(r.direction.y),fabsf(r.direction.z));
- 
+
+
+		//Soft shadows
+		int dim = 30;
+		glm::vec3 finalCol(0,0,0);
+		float st = (1.0f/dim);
+		float w = (1.0f/(dim*dim));
+		glm::vec3 tlpos,mycolor;
+		for(int i=0 ; i < dim ; i++)
+		{
+			for(int j=0 ; j < dim ; j++)
+			{
+			tlpos = glm::vec3(-0.5 + (st * i), 0.0 , -0.5 + (st * j));
+			LPOS = multiplyMV(geoms[glid].transform, glm::vec4(tlpos,1.0f)) + glm::vec3(0,-2.0,0);
+			s.direction = glm::normalize(LPOS-neyep);
+			shadow = checkForShadows(geoms,numberOfGeoms,s,myvertex,numVertices,LPOS,obno);
+			calculateColoratPoint(geoms,dips,LPOS,dnorm,relcolor,obno,mycolor,cam.position,cudamat);
+			if(shadow == 0)
+				finalCol = finalCol + mycolor;
+			else
+				finalCol = finalCol + amb;
+			}
+		}
+		colors[index] = finalCol * w;
+	}
   }
 
-  
-
- //colors[index] = generateRandomNumberFromThread(resolution, time, x, y);
-   
+ //colors[index] = generateRandomNumberFromThread(resolution, time, x, y);   
 }
 
 //TODO: FINISH THIS FUNCTION
@@ -327,8 +329,8 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
    for(int i=0;i <  numberOfMaterials ; i++)
    {
    glm::vec3* tcolor = color + i ;
-  cudaMemcpy(tcolor , &materials[i].color, sizeof(glm::vec3), cudaMemcpyHostToDevice);
-  }
+   cudaMemcpy(tcolor , &materials[i].color, sizeof(glm::vec3), cudaMemcpyHostToDevice);
+   }
   //kernel launches
   raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms,cudamat ,numberOfMaterials,mvertex,numVertices);  //
 
@@ -350,52 +352,34 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
 
 float __device__ meshIntersectionTest(staticGeom curGeom,ray s,glm::vec3* myvertex, int numVertices, glm::vec3& mintersect, glm::vec3& mnormal)
 {
-				int flag = 0 ;
-				glm::vec3 ipss,normss;
-			float t , at[100];
-			int p = 0;
-			glm::vec3 curnorm[100] , curipss[100];
+		glm::vec3 ipss,normss;
+		float t , at = 12345.0;
+		glm::vec3 curnorm , curipss;
+
 		for(int k=0 ;k < numVertices - 2 ; k= k+3)          
 		{
 			t = triangleIntersectionTest(curGeom,s,myvertex[k],myvertex[k+1],myvertex[k+2], ipss, normss);
-			if(t != -1)
+			if(t != -1  && t<at)
 			{
-				curnorm[p]  = normss;
-				curipss[p]  = ipss;
-				flag = 1;
-				at[p] = t;
-				p++;
+				curnorm  = normss;
+				curipss  = ipss;
+				at = t;
 			}
-		}  //colors[index] = materials[geoms[i].materialid].color;
-		float ntemp = at[0];   
-		int nindex = 0;
-		if(flag == 1)
-		{
-			for(int s =0 ; s < p ; s++)
-			{
-				if(at[s] < ntemp)
-				{
-					ntemp = at[s];
-					nindex = s;
-				}
-			 // triangleIntersectionTest(geoms[i],r,p11,p12,p13, ips[i], norms[i]);
-			
-			}
+		}  
 
-			
-			mnormal    = curnorm[nindex];
-			mintersect = curipss[nindex];
-			return  at[nindex] ;
-		}
-		else
+		mnormal    = curnorm;
+		mintersect = curipss;
+		if (at == 12345.0)
 			return -1;
+		else
+			return  at ;
 
 }
 
 
 int __device__ checkForShadows(staticGeom* geoms,int numberOfGeoms,ray s, glm::vec3* myvertex, int numVertices,glm::vec3 LPOS,int obno)
 {
-	   int sha = 0;
+	   int   sha = 0;
 	   float sit = 0;
 	   float len = glm::length(s.origin - LPOS) ;
 	  
@@ -416,14 +400,14 @@ int __device__ checkForShadows(staticGeom* geoms,int numberOfGeoms,ray s, glm::v
 		{
 		  sit =  meshIntersectionTest(geoms[i],s,myvertex,numVertices,htemp,ntemp);
 		}
-       
-	     if(sit != -1)
+        //Shadow == 1 means the point of interesection is under a shadow , if 0 then no shadow
+	    if(sit != -1)
 	       {
 			if ( glm::length(htemp - s.origin ) < len)
-				return 1;   //  Shadow == 1 means the point of interesection is under a shadow , if 0 then no shadow
+				return 1;   
 			else
 				sha = 0 ;
-		 }
+		   }
 		}	 
 		}
 
@@ -466,7 +450,30 @@ int __device__ getreflectedcolor(staticGeom* geoms,int numberOfGeoms,ray ref, gl
 
   }
 
-	return rno;
+  return rno;
 
+
+}
+
+
+void __device__  calculateColoratPoint(staticGeom* geoms,glm::vec3 dips,glm::vec3 LPOS,glm::vec3 dnorm,glm::vec3 relcolor,int obno, glm::vec3& mycolor,glm::vec3 cpos,material* cudamat)
+{
+
+	    glm::vec3 lig =  dips - LPOS ;
+		glm::vec3 ref1  =  lig - (2.0f * dnorm * (glm::dot(dnorm,lig)));     // glm::normalize(glm::reflect(-(lig) , glm::normalize(norms[obno])));
+		float dt = glm::dot(glm::normalize(cpos),glm::normalize(ref1));
+		if(dt < 0)
+			 dt = 0;
+		float sc = pow(dt,30);
+
+
+		//Final output color
+		float kd = 0.75f,ks = 0.1f,kss = 0.1f,ka = 0.05;
+		glm::vec3 amb =  cudamat[geoms[obno].materialid].color ;
+		glm::vec3 dif =  cudamat[geoms[obno].materialid].color *  glm::dot(dnorm,glm::normalize(LPOS - dips));
+		glm::vec3 spe =  glm::vec3(1,1,1) * sc;
+		glm::vec3 ref =  relcolor ;
+
+		mycolor = (ka * amb + kd * dif + kss * spe) * (1 - ks) + (ref * ks);
 
 }

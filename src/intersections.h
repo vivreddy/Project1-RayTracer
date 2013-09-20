@@ -75,29 +75,20 @@ __host__ __device__ float triangleIntersectionTest(staticGeom triangle, ray r,gl
 	 glm::vec3 rd = glm::normalize(multiplyMV(triangle.inverseTransform, glm::vec4(r.direction,0.0f)));
 
 	 ray rt; rt.origin = ro; rt.direction = rd;
-
-
 	 glm::vec3 n ;
-	n = glm::normalize(glm::cross((p3-p1),(p2-p1)));
+	 n = glm::normalize(glm::cross((p3-p1),(p2-p1)));
 	
 
 	glm::vec3 nf = glm::normalize(glm::cross((p3-p1),(p2-p1))) ;
-	//vec4 nn = vec4(nf[0],nf[1],nf[2],0.0f);
 	glm::vec3 onor = multiplyMV(triangle.inverseTransform, glm::vec4(nf,1.0f));
-	//vec4 nv = inverse(transpose(T)) * nn;
-	//onor = (vec3(nv[0],nv[1],nv[2])) ;   // vec3(0,0,1) ;// 
-	//onor = vec3(0,0,1) ;
 	double thit ; 
 	thit  =  (float)(glm::dot(p1,n) - glm::dot(ro,n))/(glm::dot(rd,n)) ;
 	if(thit < 0 )
 		 return -1 ;
-	/*if(thit > 1000)
-		cout << "hmm "<< endl ;*/
 	
 	// check if the intersection with plane was inside triangle ,if not then output -1 
 	float sa,ta ;
 	glm::vec3 w;
-	//r = P + (float) thit * V ;
 	glm::vec3 rr =  getPointOnRay(rt, thit) ; 
 	w = rr - p1 ;
 	// Now using the parametric representation of a plane and finding the s and t values of the equation 
@@ -109,20 +100,27 @@ __host__ __device__ float triangleIntersectionTest(staticGeom triangle, ray r,gl
 	float den = pow(glm::dot(u,v),2) - (glm::dot(u,u) * glm::dot(v,v)) ; 
 	sa = (glm::dot(u,v)*glm::dot(w,v)  -  glm::dot(v,v) * glm::dot(w,u))/den ;
 	ta = (glm::dot(u,v)*glm::dot(w,u)  -  glm::dot(u,u) * glm::dot(w,v))/den ;
-	
-	//normal = n;
-	//intersectionPoint = rr;
 
 	 glm::vec3 realIntersectionPoint = multiplyMV(triangle.transform, glm::vec4(getPointOnRay(rt, thit), 1.0));
      glm::vec3 realOrigin = multiplyMV(triangle.transform, glm::vec4(0,0,0,1));
 	 intersectionPoint = realIntersectionPoint;
 
-	 normal =  glm::normalize(multiplyMV(triangle.transform, glm::vec4(n,0.0f)));
-	 
-     //normal = glm::normalize(realIntersectionPoint - realOrigin);
-        
-     
+	 //normal =  glm::normalize(multiplyMV(triangle.transform, glm::vec4(n,0.0f)));
 
+	 cudaMat4 itMat = triangle.inverseTransform ;
+	 glm::vec4 r1(itMat.x.x,itMat.y.x,itMat.z.x,itMat.w.x);
+	 glm::vec4 r2(itMat.x.y,itMat.y.y,itMat.z.y,itMat.w.y);
+	 glm::vec4 r3(itMat.x.z,itMat.y.z,itMat.z.z,itMat.w.z);
+	 glm::vec4 r4(itMat.x.w,itMat.y.w,itMat.z.w,itMat.w.w);
+
+	 cudaMat4 ittrans;
+	 ittrans.x = r1;	
+	 ittrans.y = r2;
+     ittrans.z = r3;
+	 ittrans.w = r4;
+
+	 normal =  glm::normalize(multiplyMV(ittrans, glm::vec4(n,0.0f)));
+	 
 	if ((sa >= 0) && (ta >= 0) && (sa+ta <= 1+0.001) )
 	return glm::length(r.origin - realIntersectionPoint);
 	else
@@ -140,10 +138,10 @@ __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& 
   
 	 float vDotDirection = glm::dot(rt.origin, rt.direction);
 	 glm::vec4 NL(0,0,0,0);
-	float t1,t2;
-	float inf= 10000.0;   // Setting infinity as a high value
-	const float prt = 0.5; 
-	const float nrt = -0.5;  
+	 float t1,t2;
+	 float inf= 10000.0;   // Setting infinity as a high value
+	 const float prt = 0.5; 
+	 const float nrt = -0.5;  
 	 glm::vec4 ol(nrt,nrt,nrt,1.0);
 	 glm::vec4 oh(prt ,prt ,prt ,1.0);
 	 glm::vec4 tl =  ol;
@@ -219,20 +217,29 @@ __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& 
 	   // P +(float) thit * V ;
 	
 
-	//NL = glm::vec4(0.0,0.0,1.0,0.0);//
+	//NL = glm::vec4(0.0,0.0,1.0,0.0);// testing normals
 
      glm::vec3 realIntersectionPoint = multiplyMV(box.transform, glm::vec4(getPointOnRay(rt, thit), 1.0));
      glm::vec3 realOrigin = multiplyMV(box.transform, glm::vec4(0,0,0,1));
 	 intersectionPoint = realIntersectionPoint;
 
-	 normal =  glm::normalize(multiplyMV(box.transform, NL));
-	 
-     //normal = glm::normalize(realIntersectionPoint - realOrigin);
-        
+	    
+	 cudaMat4 itMat = box.inverseTransform ;
+	 glm::vec4 r1(itMat.x.x,itMat.y.x,itMat.z.x,itMat.w.x);
+	 glm::vec4 r2(itMat.x.y,itMat.y.y,itMat.z.y,itMat.w.y);
+	 glm::vec4 r3(itMat.x.z,itMat.y.z,itMat.z.z,itMat.w.z);
+	 glm::vec4 r4(itMat.x.w,itMat.y.w,itMat.z.w,itMat.w.w);
+
+	 cudaMat4 ittrans;
+	 ittrans.x = r1;	
+	 ittrans.y = r2;
+     ittrans.z = r3;
+	 ittrans.w = r4;
+
+	 //normal =  glm::normalize(multiplyMV(box.transform, NL)); // without inverse transform applied
+	 normal =  glm::normalize(multiplyMV(ittrans, NL));
      return glm::length(r.origin - realIntersectionPoint);
 
-	
-	//return -1;
 }
 
 //LOOK: Here's an intersection test example from a sphere. Now you just need to figure out cube and, optionally, triangle.

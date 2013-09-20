@@ -25,4 +25,5 @@ void cudaRaytraceCore(uchar4* pos, camera* renderCam, int frame, int iterations,
 float __device__ meshIntersectionTest(staticGeom curGeom,ray s,glm::vec3* myvertex, int numVertices, glm::vec3& htemp, glm::vec3& ntemp);
 int __device__ checkForShadows(staticGeom* geoms,int numberOfGeoms,ray s, glm::vec3* myvertex, int numVertices,glm::vec3 LPOS,int index);
 int __device__ getreflectedcolor(staticGeom* geoms,int numberOfGeoms,ray s, glm::vec3* myvertex, int numVertices,glm::vec3& htemp, glm::vec3& ntemp);
+void __device__ calculateColoratPoint(staticGeom* geoms,glm::vec3 dips,glm::vec3 LPOS,glm::vec3 dnorm,glm::vec3 relcolor,int obno, glm::vec3& mycolor,glm::vec3 cpos,material* cudamat);
 #endif
