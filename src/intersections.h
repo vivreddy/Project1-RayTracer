@@ -347,7 +347,7 @@ __host__ __device__ glm::vec3 getRandomPointOnSphere(staticGeom sphere, float ra
 	/*vertices[i] =  rad * sin(p*val) * sin(t*val); 
 	vertices[i+1] =  rad * sin(p*val); 
 	vertices[i+2] =  rad * sin(p*val) * cos(t*val); 
-	vertices[i+3] =  1.0f;*/
+	*/
 
 	// The above is the equations for a point on sphere , where p and t are degree. 
 	// p is vertical angle and varies from 0 to 180

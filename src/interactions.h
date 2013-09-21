@@ -91,15 +91,22 @@ __host__ __device__ glm::vec3 calculateRandomDirectionInHemisphere(glm::vec3 nor
 //This should be much easier than if you had to implement calculateRandomDirectionInHemisphere.
 __host__ __device__ glm::vec3 getRandomDirectionInSphere(float xi1, float xi2) {
 
-	/*vertices[i] =  rad * sin(p*val) * sin(t*val); 
-	vertices[i+1] =  rad * sin(p*val); 
-	vertices[i+2] =  rad * sin(p*val) * cos(t*val); 
-	vertices[i+3] =  1.0f;*/
+	/*vertices[i] =   rad * sin(p*val) * cos(t*val); 
+	vertices[i+1] =   rad * sin(p*val) * sin(t*val);
+	vertices[i+2] =   rad * cos(p*val);
+	*/
 
 	// source http://mathworld.wolfram.com/SpherePointPicking.html
 
+//Notes on solving for thata and phi 
+// xi1 and xi2 vary between 0 to 1; 
+// We need t to be 0 to 2*pi , xi1[0,1] * 2*pi = [0,2*pi];
+// We need u = cos(phi) to be between [-1,1]
+// sqrt(1 - cos(phi) * cos(phi)) varies between 0 to 1 when Cos(phi) varies from [-1,1]
+// we have sin(phi)* sin(phi) = vaies between [0,1] = xi2
+// therfore phi = asin(sqrt(xi2));
 float t = TWO_PI * xi1;
-float p = asin(sqrt(xi2));
+float p = asin(sqrt(xi2)); 
 
 glm::vec3 a(0,0,0);
 a.x = cos(t) * sin(p);
