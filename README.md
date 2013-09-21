@@ -90,7 +90,7 @@ Video :
 Here is a 30 second video of the running CUDA ray tracer : 
 
 
-
+[Video Demo](http://youtu.be/7nRIo22uiFM)
 
 
 
