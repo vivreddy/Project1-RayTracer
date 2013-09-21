@@ -76,7 +76,7 @@ Here are the output images from my CUDA ray tracer
 
 
 2)With Soft shadows, reflections and object loader.
-(Area light in poitive z-axis ie out of the box)
+(The number of Point lights are reduced than the above image)
 
 
 ![alt tag](https://raw.github.com/vivreddy/Project1-RayTracer/master/renders/7.png)
