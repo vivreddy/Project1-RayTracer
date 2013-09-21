@@ -83,6 +83,7 @@ Here are the output images from my CUDA ray tracer
 
 
 3)With Soft shadows, reflections and object loader.
+(Without reflections and area light moved in positve z-axis)
 
 ![alt tag](https://raw.github.com/vivreddy/Project1-RayTracer/master/renders/3.png)
 
