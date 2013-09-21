@@ -108,12 +108,16 @@ light geometry.
 
 The results are tabulated below for various tile sizes : 
 
+
 As we can see from the table , the fastest time the image was rendered was when 
 the I used 8 tiles. The reason why the CUDA event time is not inversely 
 proportional as the number of threads per block increase is because :
 ->Increase in number of threads does not guarantee a speed up
 ->Usually an ideal number of threads are tested to see the fastest among them.
-->
+->Adding more threads helps upto a certain point after that they cause 
+  performance degradation
+->If there is lot of memory intensive work then having more number of threads
+  does not help increase the speed. 
 
 
 
