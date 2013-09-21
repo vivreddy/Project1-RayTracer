@@ -99,25 +99,23 @@ Here is a 30 second video of the running CUDA ray tracer :
 -------------------------------------------------------------------------------
 Performance Evaluation : 
 -------------------------------------------------------------------------------
-The performance evaluation is where you will investigate how to make your CUDA
-programs more efficient using the skills you've learned in class. You must have
-perform at least one experiment on your code to investigate the positive or
-negative effects on performance. 
+The performance evaluation was done by changing the number of threads per block,
+the parameter tile size was varied to check the cuda event time taken.
 
-One such experiment would be to investigate the performance increase involved 
-with adding a spatial data-structure to your scene data.
+The scene here for which the evaluation was conducted consisted of reflections,
+soft shadows and uses 400 point lights which are uniformly distributed on the
+light geometry. 
 
-Another idea could be looking at the change in timing between various block
-sizes.
+The results are tabulated below for various tile sizes : 
 
-A good metric to track would be number of rays per second, or frames per 
-second, or number of objects displayable at 60fps.
+As we can see from the table , the fastest time the image was rendered was when 
+the I used 8 tiles. The reason why the CUDA event time is not inversely 
+proportional as the number of threads per block increase is because :
+->Increase in number of threads does not guarantee a speed up
+->Usually an ideal number of threads are tested to see the fastest among them.
+->
 
-We encourage you to get creative with your tweaks. Consider places in your code
-that could be considered bottlenecks and try to improve them. 
 
-Each student should provide no more than a one page summary of their
-optimizations along with tables and or graphs to visually explain and
-performance differences.
+
 
 -------------------------------------------------------------------------------
