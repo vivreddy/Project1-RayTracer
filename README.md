@@ -82,7 +82,9 @@ Here are the output images from my CUDA ray tracer
 ![alt tag](https://raw.github.com/vivreddy/Project1-RayTracer/master/renders/7.png)
 
 
+3)With Soft shadows, reflections and object loader.
 
+![alt tag](https://raw.github.com/vivreddy/Project1-RayTracer/master/renders/3.png)
 
 -------------------------------------------------------------------------------
 Video :
