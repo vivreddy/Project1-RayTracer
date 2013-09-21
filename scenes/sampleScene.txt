@@ -157,12 +157,12 @@ ROTAT       0 0 0
 SCALE       .01 10 10
 
 OBJECT 5
-bunny.obj
-material 6
+sphere
+material 4
 frame 0
-TRANS       0 0.5 4
-ROTAT       90 180 0
-SCALE       25 25 25
+TRANS       0 2 0
+ROTAT       0 180 0
+SCALE       3 3 3
 
 OBJECT 6
 sphere

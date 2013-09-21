@@ -253,7 +253,7 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
 			if(shadow == 0)
 				finalCol = finalCol + mycolor  ;
 			else
-				finalCol = finalCol + (amb * 0.4f);// +  (cudamat[geoms[obno].materialid].color *  glm::dot(dnorm,glm::normalize(LPOS - dips))) * 0.1f ;
+				finalCol = finalCol +   (cudamat[geoms[obno].materialid].color *  glm::dot(dnorm,glm::normalize(LPOS - dips))) * 0.1f ;//(amb * 0.4f);// +
 			}
 		}
 		if(cudamat[geoms[obno].materialid].emittance == 0)
@@ -482,8 +482,6 @@ void __device__  calculateColoratPoint(staticGeom* geoms,glm::vec3 dips,glm::vec
 			 dt = 0;
 		if(cudamat[geoms[obno].materialid].specularExponent != 0)
 			sc = pow(dt,cudamat[geoms[obno].materialid].specularExponent);
-
-	
 
 		//Final output color
 		float kd = 0.7f,ks = 0.1f,kss = 0.2f,ka = 0.1;

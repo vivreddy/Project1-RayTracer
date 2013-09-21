@@ -1,0 +1,51 @@
+ ray r = raycastFromCameraKernel(resolution,time,x,y,cam.position,cam.view,cam.up,cam.fov);
+
+  for(int i=0; i < numberOfGeoms ; i++)
+  {
+		
+		if(geoms[i].type == SPHERE)
+		{
+		  rips[i] = sphereIntersectionTest(geoms[i],r, ips[i], norms[i]);
+		  //colors[index] = materials[geoms[i].materialid].color;
+		}  
+		else if (geoms[i].type == CUBE)
+		{
+		  rips[i] = -1 ; // boxIntersectionTest(geoms[i],r, ips[i], norms[i]);
+		  //colors[index] = materials[geoms[i].materialid].color;
+		}
+  
+  }
+
+  float temp = 123456.0;
+  int obno=0,flag=0;
+    for(int i=0; i < numberOfGeoms ; i++)
+  {
+	
+     if(rips[i] == -1)
+		rips[i] = 123456.0 ;
+	     if(rips[i] <= temp )
+	 {
+		 temp = rips[i];
+		 obno = i;      // Storing the index where the least hit value was found so that the corresponding normal could be got back 
+		 
+	 }
+	 if(rips[i] == rips[i+1])
+	 {
+		flag++;
+	 }
+	 if(i == numberOfGeoms-1)
+	 {
+		if(flag == numberOfGeoms)
+			temp = 123456.0;
+	 
+	 }
+	
+  }
+  if( temp == 123456.0)
+{
+	colors[index] = glm::vec3(0,0,0);
+}
+else
+{
+    colors[index] = color[geoms[obno].materialid];
+}
