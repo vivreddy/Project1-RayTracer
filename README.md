@@ -70,7 +70,7 @@ Here are the output images from my CUDA ray tracer
 1) With Soft shadows and reflections. Area light at the center .
 
 
-![alt tag](https://raw.github.com/vivreddy/Project1-RayTracer/master/renders/1.png)
+![alt tag](https://raw.github.com/vivreddy/Project1-RayTracer/master/renders/5.png)
 
 
 
@@ -79,7 +79,7 @@ Here are the output images from my CUDA ray tracer
 (Area light in poitive z-axis ie out of the box)
 
 
-![alt tag](https://raw.github.com/vivreddy/Project1-RayTracer/master/renders/3.png)
+![alt tag](https://raw.github.com/vivreddy/Project1-RayTracer/master/renders/7.png)
 
 
 
@@ -107,7 +107,7 @@ soft shadows and uses 400 point lights which are uniformly distributed on the
 light geometry. 
 
 The results are tabulated below for various tile sizes : 
-
+![alt tag](https://raw.github.com/vivreddy/Project1-RayTracer/master/renders/table.png)
 
 As we can see from the table , the fastest time the image was rendered was when 
 the I used 8 tiles. The reason why the CUDA event time is not inversely 
